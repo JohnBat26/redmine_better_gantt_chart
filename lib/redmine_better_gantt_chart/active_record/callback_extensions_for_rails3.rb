@@ -24,31 +24,32 @@ module RedmineBetterGanttChart
 
       module ClassMethods
         def without_callbacks(*types)
-          RedmineBetterGanttChart::ActiveRecord::WithoutCallbacks.new(self, types)
-        end
-
-        def skip_callbacks(*types)
-          types = [:save, :create, :update, :destroy, :touch] if types.empty?
-          deactivate_callbacks(types)
-          yield.tap do
-            activate_callbacks(types)
-          end
-        end
-
-        def deactivate_callbacks(types)
-          types.each do |type|
+          callback_options={}
+          callback_hash= Hash[callbacks.map{|callback|
+              chain = send("_#{callback}_callbacks")
+              options = Hash[chain.map{|c| [c.filter,{:options=>c.options,:per_key=>c.per_key}]}]
+              callback_options.reverse_merge!(options)
+              chain_hash=Hash[chain.map{|c| [c.kind, chain.collect{|ch| ch.filter if ch.kind==c.kind}.compact]}]
+              [callback,chain_hash]
+            }
+          ]
+          callback_hash.each {|callback,filters|
+            filters.each{|filter,methods|
+              skip_callback(callback, filter, *methods)
+            }
             name = :"_run_#{type}_callbacks"
             alias_method(:"_deactivated_#{name}", name)
-            define_method(name) { |&block| block.call }
-          end
-        end
-
-        def activate_callbacks(types)
-          types.each do |type|
+          callback_hash.each {|callback,filters|
+            filters.each{|filter,methods|
+              methods.each{|method|
+                set_callback(callback, filter, method, callback_options[method])
+              }
+            }
             name = :"_run_#{type}_callbacks"
             alias_method(name, :"_deactivated_#{name}")
             undef_method(:"_deactivated_#{name}")
           end
+            :destroy
         end
       end
     end

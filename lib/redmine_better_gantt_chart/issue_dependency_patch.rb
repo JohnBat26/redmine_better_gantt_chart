@@ -206,7 +206,7 @@ module RedmineBetterGanttChart
       end
 
       # Changes behaviour of reschedule_on method
-      def reschedule_on_with_earlier_date!(date)
+      def reschedule_on_with_earlier_date!(date)      
         return if date.nil?
 
         if start_date.blank? || start_date != date
